@@ -1,0 +1,25 @@
+[etcd_cluster]  # recommendation: 3, or 5-7 nodes
+10.0.10.3
+10.0.10.4
+10.0.10.5
+
+[balancers]
+10.0.10.2 haproxy_listen_iface=0.0.0.0
+
+[master]
+10.0.10.3 hostname=svc-psql01 postgresql_exists=false
+
+[replica]
+10.0.10.4 hostname=svc-psql02 postgresql_exists=false
+10.0.10.5 hostname=svc-psql03 postgresql_exists=false
+
+[postgres_cluster:children]
+master
+replica
+
+[all:vars]
+ansible_connection='ssh'
+ansible_ssh_port='22'
+ansible_user='pustovetov'
+# ansible_ssh_pass='secretpassword'  # "sshpass" package is required for use "ansible_ssh_pass"
+ansible_ssh_private_key_file=/home/pustovetov/.ssh/private.pem
