@@ -82,10 +82,12 @@ Haproxy отреагировало на потерю pgsql01, 503 ошибкам
 
 `Dec 09 12:10:52 svc-hp01 haproxy[2222991]: [WARNING]  (2222991) : Server replicas_async/svc-psql01 is DOWN, reason: Layer7 wrong status, code: 503, info: "Service Unavailable", check duration: 1ms. 2 active and 0 backup servers left. 0 sessions active, 0 requeued, 0 remaining in queue.
 `
+
 Patroni на сервере pgsql01 отреагировал логично, временно потеряв доступ до всех etcd в процессе работы blade
 
 `Dec 09 12:20:37 svc-psql01 patroni[897]: 2023-12-09 12:20:37,711 ERROR: Failed to get list of machines from http://10.0.10.3:2379/v3: MaxRetryError("HTTPConnectionPool(host='10.0.10.3', port=2379): Max retries exceeded with url: /v3/cluster/member/list (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x7f734765acb0>, 'Connection to 10.0.10.3 timed out. (connect timeout=1.6666666666666667)'))")
 `
+
 Аналогичные эксперименты были проведены по очереди на репликах, где не вызвало никакого импакта на работу сайта, так как мастер всегда был доступен и одна из реплик тоже, кворум не был нарушен
 
 **Анализ результатов:**\
