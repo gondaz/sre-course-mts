@@ -47,7 +47,7 @@ go:77","msg":"raft.node: e8a244cec84997e3 elected leader 43c92545ebd24324 at ter
 Ожидаются частичные проблемы с прогрузкой сайта, возможны ошибки 5хх, ошибки в логах etcd/patroni о таймаутах при соединении с хостом подвергнутым сетевым проблемам
 
 **Реальные результаты:**
-* С помощью утилиты blade создал потери пакетов в 50% на хосте с haproxy на 30с (blade create network loss --interface ens160 --percent 50 --timeout 30), как итог не было замечно проблем, haproxy успешно опрашивала бэкенды и не было ошибок, прогрузка сайта и данных не ухудшилась
+* С помощью утилиты blade создал потери пакетов в 50% на хосте с haproxy на 30с (blade create network loss --interface ens160 --percent 50 --timeout 30), как итог не было замечно проблем, haproxy успешно опрашивала бэкенды и не было ошибок, прогрузка сайта и данных не ухудшилась\
 Далее создал потери пакетов в 70% (blade create network loss --interface ens160 --percent 70 --timeout 30), как итог проявились проблемы с доступностью бэкендов у haproxy, время ответа сайта сильно выросло от 2s до 13s, связано с тем, что haproxy терял бэкенд и не мог переправить запрос к БД
 ```
 mz-276:kubernetes leonid.pustovetov$ curl -o /dev/null -s -w 'Total: %{time_total}s\n' http://pustovetov.mts.tld/Cities
