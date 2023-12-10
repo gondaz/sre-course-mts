@@ -119,7 +119,7 @@ Total: 0.244322s
 
 # 3. Высокая нагрузка на CPU, Disk I/O
 
-**Описание эксперимента:**\
+**Описание эксперимента:**
 * Создаем повышенную нагрузку на ЦПУ на ноде haproxy, чтобы проверить как изменится время ответа сайта\
 `blade create cpu fullload --timeout 300`
 
@@ -130,7 +130,7 @@ Total: 0.244322s
 В реальности за 5 мин cpu fullload нода haproxy достигла LA(5)=1.3, при одном vCPU у хоста. Проблем с haproxy не было выявлено, никаких 5хх ошибок по проверкам бэкендов, время ответа сайта до начала эксперимента порядка 0.23с, на конец эксперимента около 0.30с, что говорит о очень незначительном импакте на систему
 
 **Анализ результатов:**\
-Время ответа до начала эксперимента:\
+Время ответа до начала эксперимента:
 ```
 $ while i=0; do curl -o /dev/null -s -w 'Total: %{time_total}s\n' http://pustovetov.mts.tld/Cities && sleep 2; done
 Total: 0.244595s
@@ -146,7 +146,7 @@ Total: 0.242636s
 Total: 0.238584s
 Total: 0.225386s
 ```
-Время ответа в течение эксперимента:\
+Время ответа в течение эксперимента:
 ```
 $ while i=0; do curl -o /dev/null -s -w 'Total: %{time_total}s\n' http://pustovetov.mts.tld/Cities && sleep 2; done
 Total: 0.233349s
@@ -227,8 +227,9 @@ Total: 0.237056s
 **Реальные результаты:**\
 Время отключения нод 15:37:40
 Первые алерты о падении нод haproxy/pgsql поступили в 15:38:43
-for <gondaz2009@yandex.ru>; Sun, 10 Dec 2023 11:38:44 +0300
-
+`for <gondaz2009@yandex.ru>; Sun, 10 Dec 2023 11:38:44 +0300
+`
+```
 [1] Firing
 Labels
 alertname = Node_Down
@@ -254,11 +255,12 @@ type = node
 Annotations
 description = Node exporter на 10.0.10.3 недоступен
 summary = Instance 10.0.10.3 is down
-
+```
 Алерты от blackbox пришли чуть позже, что логично:
 
-for <gondaz2009@yandex.ru>; Sun, 10 Dec 2023 15:40:10 +0300
-
+`for <gondaz2009@yandex.ru>; Sun, 10 Dec 2023 15:40:10 +0300
+`
+```
 [1] Firing
 Labels
 alertname = Resource_Down
@@ -273,7 +275,7 @@ type = blackbox
 Annotations
 description = Проверка pustovetov.mts.tld/Cities модулем http-2xx из неудачна уже более 2 минут
 summary = Host pustovetov.mts.tld/Cities failed http-2xx check from
-
+```
 После восстановления хостов (power on at 15:55) алерты о их доступности пришли спустя в 15:58 и 16:00, часть времени затрачена на включение ВМ и активацию всех служб systemd\
 Веб-сайт начал отвечать в 15:56
 ![img.png](img.png)
