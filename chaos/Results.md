@@ -117,17 +117,167 @@ mz-276:kubernetes leonid.pustovetov$ curl -o /dev/null -s -w 'Total: %{time_tota
 Total: 0.244322s
 ```
 
-# 3. Высокая нагрузка на CPU
+# 3. Высокая нагрузка на CPU, Disk I/O
 
 **Описание эксперимента:**\
-Создаем повышенную нагрузку на ЦПУ на ноде haproxy, чтобы проверить как изменится время ответа сайта\
-Создаем повышенную нагрузку на ЦПУ на всех 3 нодах etcd/pgsql чтобы проверить не развалится ли кластер, ввиду долгих ответов между сервисами
+* Создаем повышенную нагрузку на ЦПУ на ноде haproxy, чтобы проверить как изменится время ответа сайта\
+`blade create cpu fullload --timeout 300`
 
 **Ожидаемые результаты:**\
-TBD
+Увеличение времени ответа сайта, так как haproxy будет перегружен и возможны фейлы проверок живучести бэкендов pgsql
 
 **Реальные результаты:**\
-TBD
+В реальности за 5 мин cpu fullload нода haproxy достигла LA(5)=1.3, при одном vCPU у хоста. Проблем с haproxy не было выявлено, никаких 5хх ошибок по проверкам бэкендов, время ответа сайта до начала эксперимента порядка 0.23с, на конец эксперимента около 0.30с, что говорит о очень незначительном импакте на систему
 
 **Анализ результатов:**\
-TBD
+Время ответа до начала эксперимента:\
+```
+$ while i=0; do curl -o /dev/null -s -w 'Total: %{time_total}s\n' http://pustovetov.mts.tld/Cities && sleep 2; done
+Total: 0.244595s
+Total: 0.230657s
+Total: 0.241464s
+Total: 0.225421s
+Total: 0.228786s
+Total: 0.237803s
+Total: 0.250388s
+Total: 0.233263s
+Total: 0.226503s
+Total: 0.242636s
+Total: 0.238584s
+Total: 0.225386s
+```
+Время ответа в течение эксперимента:\
+```
+$ while i=0; do curl -o /dev/null -s -w 'Total: %{time_total}s\n' http://pustovetov.mts.tld/Cities && sleep 2; done
+Total: 0.233349s
+Total: 0.317028s
+Total: 0.294506s
+Total: 0.270502s
+Total: 0.264705s
+Total: 0.251546s
+Total: 0.261022s
+Total: 0.242778s
+Total: 0.303643s
+Total: 0.236535s
+Total: 0.269257s
+Total: 0.314360s
+```
+Предельная нагрузка по ЦПУ на haproxy не дает ощутимого импакта, отчасти это связано с небольшим количеством проверяемых бэкендов
+
+**Описание эксперимента:**
+* Создаем повышенную нагрузку на ЦПУ и disk I/O на всех 3 нодах etcd/pgsql чтобы проверить как поведет себя кластер и работа сайта, ввиду долгих ответов между сервисами
+`blade create cpu fullload --timeout 300 && blade create disk burn --timeout 300`
+
+**Ожидаемые результаты:**\
+Снижение производительности системы и работы веб-сайта из-за полной нагрузки на ЦПУ и диск в кластерах pgsql/etcd
+
+**Реальные результаты:**\
+Никакого импакта замечано не было, время ответа сайта в пределах 0.23-0.25с, ошибок patroni/pgsql/etcd не обнаружено
+
+**Анализ результатов:**\
+При полной загрузке ЦПУ и диска система полностью сохраняет работоспособность, скорее всего ввиду отсутствия реального хайлоада
+```
+$ while i=0; do curl -o /dev/null -s -w 'Total: %{time_total}s\n with code: %{http_code}\n' http://pustovetov.mts.tld/Cities && sleep 2; done
+Total: 0.230355s
+ with code: 200
+Total: 0.296938s
+ with code: 200
+Total: 0.244166s
+ with code: 200
+Total: 0.265453s
+ with code: 200
+Total: 0.232068s
+ with code: 200
+Total: 0.229991s
+ with code: 200
+Total: 0.249888s
+ with code: 200
+Total: 0.230209s
+ with code: 200
+Total: 0.237056s
+ with code: 200
+```
+
+# 4. Тестирование систем мониторинга и оповещения
+
+**Описание эксперимента:**\
+Проверяем систему мониторинга и алертинга на базе Prometheus и Alertmanager. Искуственно создаем outage на одной из нод pgsql и haproxy, проверяем как быстро нам придут следующие оповещения (и придут ли?):
+* Падение pgsql, node exporter, etcd unavailable
+* Недоступность сайта от blackbox exporter в силу падения haproxy
+
+**Ожидаемые результаты:**\
+Получить алерт от blackbox через 2м о падении сайта согласно правилу:
+```
+  - alert: Resource_Down
+    expr: probe_success == 0
+    for: 2m
+```
+Получить через алерты о падении нод haproxy, pgsql01, а так же сервисов patroni и etcd находящихся на ноде pgsql01 согласно правилам:
+```
+  - alert: Node_Down
+    expr: up{type="node",team!~"intinfr|dba"} == 0
+    for: 30s
+
+  - alert: PostgreSQL_Is_Down
+    expr: pg_up != 1
+    for: 1m
+```
+Так же должны прийти базовые алерты exporter_down ввиду падения самих служб экспортеров
+
+**Реальные результаты:**\
+Время отключения нод 15:37:40
+Первые алерты о падении нод haproxy/pgsql поступили в 15:38:43
+for <gondaz2009@yandex.ru>; Sun, 10 Dec 2023 11:38:44 +0300
+
+[1] Firing
+Labels
+alertname = Node_Down
+cluster = main
+instance = 10.0.10.2
+job = haproxy
+prometheus_instance = mts-prometheus
+severity = critical
+type = node
+Annotations
+description = Node exporter на 10.0.10.2 недоступен
+summary = Instance 10.0.10.2 is down
+
+[1] Firing
+Labels
+alertname = Node_Down
+cluster = main
+instance = 10.0.10.3
+job = postgres
+prometheus_instance = mts-prometheus
+severity = critical
+type = node
+Annotations
+description = Node exporter на 10.0.10.3 недоступен
+summary = Instance 10.0.10.3 is down
+
+Алерты от blackbox пришли чуть позже, что логично:
+
+for <gondaz2009@yandex.ru>; Sun, 10 Dec 2023 15:40:10 +0300
+
+[1] Firing
+Labels
+alertname = Resource_Down
+blackbox_module = http-2xx
+cluster = main
+instance = pustovetov.mts.tld/Cities
+job = api
+prometheus_instance = mts-prometheus
+severity = major
+team = infraweb
+type = blackbox
+Annotations
+description = Проверка pustovetov.mts.tld/Cities модулем http-2xx из неудачна уже более 2 минут
+summary = Host pustovetov.mts.tld/Cities failed http-2xx check from
+
+После восстановления хостов (power on at 15:55) алерты о их доступности пришли спустя в 15:58 и 16:00, часть времени затрачена на включение ВМ и активацию всех служб systemd\
+Веб-сайт начал отвечать в 15:56
+![img.png](img.png)
+
+**Анализ результатов:**\
+Система мониторинга отработала штатно, прислав уведомление о падении и восстановлении на указанную в настройках почту. Очевидно есть задержки во времени при пересылке писем, так как задействована цепочка local postfix > DNS Resolving (MX yandex.ru) > Yandex Mail Server > User's Mailbox (IMAP)\
+Рекомендуется использовать более удобные и современные ресиверы, например Telegram/Slack/Mattermost/etc
